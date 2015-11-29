@@ -195,6 +195,8 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
       Returns the minimax action using self.depth and self.evaluationFunction
     """
     "*** YOUR CODE HERE ***"
+    alpha = float('-inf')
+    beta = float('inf')
     util.raiseNotDefined()
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
@@ -210,7 +212,24 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
       legal moves.
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    totalAgents = gameState.getNumAgents() - 1
+    pacmanIndex = 0
+    startDepth = 1
+    totalDepth = self.depth
+    def ExpectiMax(gameState, depth, index):
+        if depth > totalDepth or gameState.isWin() or gameState.isLose():
+            return self.evaluationFunction(gameState)
+        legalMoves = [action for action in gameState.getLegalActions(index) if action != Directions.STOP]
+        nextIndex, nextDepth = (index+1, depth) if index+1 <= totalAgents else (0, depth + 1)
+        outputs = [ExpectiMax(gameState.generateSuccessor(index, action), nextDepth, nextIndex) for action in legalMoves]
+        if depth == 1 and index == 0:
+            best = max(outputs)
+            bestIndices = [index for index in xrange(len(outputs)) if outputs[index] == best]
+            chosenIndex = random.choice(bestIndices)
+            return legalMoves[chosenIndex]
+        return max(outputs) if index==0 else sum(outputs)/float(len(outputs))
+
+    return ExpectiMax(gameState, startDepth, pacmanIndex)
 
 def betterEvaluationFunction(currentGameState):
   """
