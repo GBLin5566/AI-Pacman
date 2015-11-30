@@ -195,9 +195,40 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
       Returns the minimax action using self.depth and self.evaluationFunction
     """
     "*** YOUR CODE HERE ***"
-    alpha = float('-inf')
-    beta = float('inf')
-    util.raiseNotDefined()
+    MAX_INT = float('inf')
+    MIN_INT = float('-inf')
+    totalAgents = gameState.getNumAgents() - 1
+    pacmanIndex = 0
+    startDepth = 1
+    totalDepth = self.depth
+    def AlphaBeta(gameState, depth, index, alpha, beta):
+        if depth > totalDepth or gameState.isWin() or gameState.isLose():
+            return self.evaluationFunction(gameState)
+        legalMoves = [action for action in gameState.getLegalActions(index) if action != Directions.STOP]
+        nextIndex, nextDepth = (index+1, depth) if index+1 <= totalAgents else (0, depth + 1)
+        if depth == 1 and index == 0:
+            outputs = [AlphaBeta(gameState.generateSuccessor(index, action), nextDepth, nextIndex, alpha, beta) for action in legalMoves]
+            best = max(outputs)
+            bestIndices = [index for index in xrange(len(outputs)) if outputs[index] == best]
+            chosenIndex = random.choice(bestIndices)
+            return legalMoves[chosenIndex]
+        if index == 0:
+            best = MIN_INT
+            for action in legalMoves:
+                best = max(best, AlphaBeta(gameState.generateSuccessor(index, action), nextDepth, nextIndex, alpha, beta))
+                if best >= beta: # Over the window
+                    return best
+                alpha = max(alpha, best)
+            return best
+        else:
+            best = MAX_INT
+            for action in legalMoves:
+                best = min(best, AlphaBeta(gameState.generateSuccessor(index, action), nextDepth, nextIndex, alpha, beta))
+                if best <= alpha: # Over the window
+                    return best
+                beta = min(beta, best)
+            return best
+    return AlphaBeta(gameState, startDepth, pacmanIndex, MIN_INT, MAX_INT)
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
   """
