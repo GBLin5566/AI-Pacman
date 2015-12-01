@@ -270,7 +270,87 @@ def betterEvaluationFunction(currentGameState):
     DESCRIPTION: <write something here so we know what you did>
   """
   "*** YOUR CODE HERE ***"
-  util.raiseNotDefined()
+  if currentGameState.isWin() or currentGameState.isLose():
+      return float('inf') if currentGameState.isWin() else float('-inf')
+  # Maze Info.
+  gameState = currentGameState
+  statePosition = gameState.getPacmanPosition()
+  stateFood = gameState.getFood()
+  stateFoodSum = gameState.getNumFood()
+  stateGhost = gameState.getGhostStates()
+  stateWall = gameState.getWalls()
+  stateScore = gameState.getScore()
+  stateCapsule = gameState.getCapsules()
+
+  '''
+    Main concept: Input the key information, and tune the weight of these information
+  '''
+
+  #print stateFood.asList()
+  '''Food'''
+  foodList = stateFood.asList()
+  minFood = min(manhattanDistance(statePosition, food) for food in foodList)
+  '''Ghost'''
+  ghostLocation = [ghost.getPosition() for ghost in stateGhost]
+  minGhostDistance = manhattanDistance(min(ghostLocation), statePosition)
+  scaredTime = [ghost.scaredTimer for ghost in stateGhost]
+  whiteGhost = [ghost for ghost in stateGhost if ghost.scaredTimer != 0]
+  normalGhost = [ghost for ghost in stateGhost if ghost.scaredTimer == 0]
+  centerGhost = (sum(ghost[0] for ghost in ghostLocation) / len(ghostLocation), sum(ghost[1] for ghost in ghostLocation) / len(ghostLocation))
+  centerGhostDistance = manhattanDistance(centerGhost, statePosition)
+
+  '''Capsule'''
+  capsuleDistance = [manhattanDistance(statePosition, cap) for cap in stateCapsule]
+  minCapsuleDistance = min(capsuleDistance) if len(capsuleDistance) > 0 else float('inf')
+
+  '''Score'''
+  foodScore, ghostScore, capsuleScore, hunterScore = 0,0,0,0
+  foodW, ghostW, capsuleW, hunterW = 1.0,1.0,1.0,1.0
+
+  '''Factor'''
+  Factor_minGhost = 1
+  Factor_hunt_active_distance = 6
+  Factor_minCapsule = 3
+  Factor_dead = 0
+  if len(whiteGhost) == 0:
+      if minGhostDistance >= Factor_minGhost and minGhostDistance <= Factor_hunt_active_distance and centerGhostDistance <= minGhostDistance:
+          ghostW, ghostScore = 10.0, (-1.0 / max(1, centerGhostDistance))
+          if len(capsuleDistance) > 0 and minCapsuleDistance <= Factor_minCapsule:
+              capsuleW, capsuleScore = 20.0, (1.0 / max(1, minCapsuleDistance))
+              ghostW, ghostScore = 1.5, (-1.0 / max(1, centerGhostDistance))
+      elif centerGhostDistance >= minGhostDistance and minGhostDistance >= 1:
+          foodW = 5.0
+          ghostW, ghostScore = 5.0, (-1.0 / max(1, minGhostDistance))
+          if len(capsuleDistance) > 0 and minCapsuleDistance <= Factor_minCapsule:
+              capsuleW, capsuleScore = 20.0, (1.0 / max(1, minCapsuleDistance))
+              ghostW, ghostScore = 1.5, (-1.0 / max(1, minGhostDistance))
+      elif minGhostDistance == Factor_minGhost:
+          ghostW, ghostScore = 25.0 , (-1.0/ max(1, minGhostDistance))
+      elif minGhostDistance == Factor_dead:
+          return float('-inf')
+      else:
+          ghostW, ghostScore = 5.0, (-1.0/max(1, minGhostDistance))
+  else:
+      minPrey = min(manhattanDistance(ghost.getPosition(), statePosition) for ghost in whiteGhost)
+      if len(normalGhost) > 0:
+          minGhostDistance = min(manhattanDistance(ghost.getPosition(), statePosition) for ghost in normalGhost)
+          centerGhost = sum(ghost.getPosition()[0] for ghost in normalGhost) / len(normalGhost), sum(ghost.getPosition()[1] for ghost in normalGhost) / len(normalGhost)
+          centerGhostDistance = manhattanDistance(centerGhost, statePosition)
+          if centerGhostDistance <= minGhostDistance and minGhostDistance >= Factor_minGhost and minGhostDistance <= Factor_hunt_active_distance:
+              ghostW, ghostScore = 10.0, (-1.0/max(centerGhostDistance, 1))
+          elif centerGhostDistance >= minGhostDistance and minGhostDistance >= 1:
+              ghostW, ghostScore = 5.0 , (-1.0/ max(1, centerGhostDistance))
+          elif minGhostDistance == Factor_dead:
+              return float('-inf')
+          elif minGhostDistance == Factor_minGhost:
+              ghostW, ghostScore = 15.0 , (-1.0/max(1, minGhostDistance))
+          else:
+              ghostScore = -1.0/max(1, minGhostDistance)
+      hunterW, hunterScore = 35.0 , (1.0 / max(1, minPrey))
+
+  func = stateScore + foodW * foodScore + ghostW * ghostScore + capsuleW * capsuleScore + hunterW * hunterScore
+  return func
+
 
 # Abbreviation
 better = betterEvaluationFunction
