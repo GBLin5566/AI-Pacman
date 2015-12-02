@@ -256,6 +256,9 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         if depth == 1 and index == 0:
             best = max(outputs)
             bestIndices = [index for index in xrange(len(outputs)) if outputs[index] == best]
+            if len(bestIndices) == 0:
+                print 'Somehow bestIndices error'
+                return legalMoves[0]
             chosenIndex = random.choice(bestIndices)
             return legalMoves[chosenIndex]
         return max(outputs) if index==0 else sum(outputs)/float(len(outputs))
@@ -304,8 +307,8 @@ def betterEvaluationFunction(currentGameState):
   minCapsuleDistance = min(capsuleDistance) if len(capsuleDistance) > 0 else float('inf')
 
   '''Score'''
-  foodScore, ghostScore, capsuleScore, hunterScore = 0,0,0,0
-  foodW, ghostW, capsuleW, hunterW = 5.0,5.0,5.0,5.0
+  foodScore, ghostScore, capsuleScore, hunterScore ,scaredScore= 0,0,0,0,sum(scaredTime)
+  foodW, ghostW, capsuleW, hunterW , scaredW = 5.0,5.0,5.0,5.0, 0.1
   hunterOppre = 0
 
   '''Factor'''
@@ -315,7 +318,6 @@ def betterEvaluationFunction(currentGameState):
   Factor_dead = 0
   Factor_white_normal = 3
 
-
   if len(whiteGhost) == 0:
       if minGhostDistance >= Factor_minGhost and minGhostDistance <= Factor_hunt_active_distance and centerGhostDistance <= minGhostDistance:
           ghostW, ghostScore = 10.0, (-1.0 / max(1, centerGhostDistance))
@@ -323,7 +325,7 @@ def betterEvaluationFunction(currentGameState):
               capsuleW, capsuleScore = 20.0, (1.0 / max(1, minCapsuleDistance))
               ghostW, ghostScore = 1.5, (-1.0 / max(1, centerGhostDistance))
       elif centerGhostDistance >= minGhostDistance and minGhostDistance >= 1:
-          foodW = 7.5
+          foodW = 15.0
           ghostW, ghostScore = 5.0, (-1.0 / max(1, minGhostDistance))
           if len(capsuleDistance) > 0 and minCapsuleDistance <= Factor_minCapsule:
               capsuleW, capsuleScore = 20.0, (1.0 / max(1, minCapsuleDistance))
@@ -352,14 +354,14 @@ def betterEvaluationFunction(currentGameState):
           elif minGhostDistance == Factor_dead:
               return float('-inf')
           elif minGhostDistance == Factor_minGhost:
-              ghostW, ghostScore = 15.0 , (-1.0/max(1, minGhostDistance))
+              ghostW, ghostScore = 20.0 , (-1.0/max(1, minGhostDistance))
           else:
               ghostScore = -1.0/max(1, minGhostDistance)
-      hunterW, hunterScore = 35.0 , (1.0 / max(1, minPrey))
+      hunterW, hunterScore = 40.0 , (1.0 / max(1, minPrey))
       if hunterOppre == 1:
           hunterW /= 3.0
 
-  func = stateScore + foodW * foodScore + ghostW * ghostScore + capsuleW * capsuleScore + hunterW * hunterScore
+  func = stateScore + foodW * foodScore + ghostW * ghostScore + capsuleW * capsuleScore + hunterW * hunterScore + scaredW * scaredScore
   return func
 
 
