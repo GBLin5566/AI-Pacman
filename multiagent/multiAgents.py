@@ -288,14 +288,55 @@ def betterEvaluationFunction(currentGameState):
   '''
     Main concept: Input the key information, and tune the weight of these information
   '''
-
   #print stateFood.asList()
+  '''The Wall'''
+  walls = stateWall.asList()
+  '''BFS Distance'''
+  mazeSize = (len(list(stateFood)), len(list(stateFood[1])))
+  def bfs(stack, a, b, l):
+      stack.push((a, []))
+      while not stack.isEmpty():
+          current, parents = stack.pop()
+          if current[0] - 1 >= 0 and not (current[0] - 1, current[1]) in walls and not (current[0]-1, current[1]) in l:
+              myParent = parents[:]
+              myParent.append((current[0]-1, current[1]))
+              if (current[0]-1, current[1]) == b:
+                  return myParent
+              stack.push(((current[0]-1, current[1]), myParent))
+              l.append((current[0]-1, current[1]))
+          if current[0] + 1 <= mazeSize[0] and not (current[0] + 1, current[1]) in walls and not (current[0]+1,current[1]) in l:
+              myParent = parents[:]
+              myParent.append((current[0]+1, current[1]))
+              if (current[0]+1, current[1]) == b:
+                  return myParent
+              stack.push(((current[0]+1, current[1]), myParent))
+              l.append((current[0]+1, current[1]))
+          if current[1] - 1 >= 0 and not (current[0], current[1] - 1) in walls and not (current[0], current[1]-1) in l:
+              myParent = parents[:]
+              myParent.append((current[0], current[1]-1))
+              if (current[0] , current[1]-1) == b:
+                  return myParent
+              stack.push(((current[0], current[1] - 1), myParent))
+              l.append((current[0], current[1]-1))
+          if current[1] + 1 <= mazeSize[1] and not (current[0] , current[1]+1) in walls and not (current[0], current[1]+1) in l:
+              myParent = parents[:]
+              myParent.append((current[0], current[1]+1))
+              if (current[0], current[1]+1) == b:
+                  return myParent
+              stack.push(((current[0], current[1] + 1), myParent))
+              l.append((current[0], current[1]+1))
+      return []
+  def BFS_Distance(a,b):
+      queue = util.Stack()
+      path = bfs(util.Stack(), a, b, [])
+      return len(path)
+
   '''Food'''
   foodList = stateFood.asList()
-  minFood = min(manhattanDistance(statePosition, food) for food in foodList)
+  minFood = min(BFS_Distance(statePosition, food) for food in foodList)
   '''Ghost'''
   ghostLocation = [ghost.getPosition() for ghost in stateGhost]
-  minGhostDistance = manhattanDistance(min(ghostLocation), statePosition)
+  minGhostDistance = min(BFS_Distance(ghost, statePosition) for ghost in ghostLocation)
   scaredTime = [ghost.scaredTimer for ghost in stateGhost]
   whiteGhost = [ghost for ghost in stateGhost if ghost.scaredTimer != 0]
   normalGhost = [ghost for ghost in stateGhost if ghost.scaredTimer == 0]
@@ -303,13 +344,14 @@ def betterEvaluationFunction(currentGameState):
   centerGhostDistance = manhattanDistance(centerGhost, statePosition)
 
   '''Capsule'''
-  capsuleDistance = [manhattanDistance(statePosition, cap) for cap in stateCapsule]
+  capsuleDistance = [BFS_Distance(statePosition, cap) for cap in stateCapsule]
   minCapsuleDistance = min(capsuleDistance) if len(capsuleDistance) > 0 else float('inf')
 
   '''Score'''
   foodScore, ghostScore, capsuleScore, hunterScore ,scaredScore= 0,0,0,0,sum(scaredTime)
   foodW, ghostW, capsuleW, hunterW , scaredW = 5.0,5.0,5.0,5.0, 0.1
   hunterOppre = 0
+
 
   '''Factor'''
   Factor_minGhost = 1
@@ -318,6 +360,7 @@ def betterEvaluationFunction(currentGameState):
   Factor_dead = 0
   Factor_white_normal = 3
 
+  '''Main Conditon Struct'''
   if len(whiteGhost) == 0:
       if minGhostDistance >= Factor_minGhost and minGhostDistance <= Factor_hunt_active_distance and centerGhostDistance <= minGhostDistance:
           ghostW, ghostScore = 10.0, (-1.0 / max(1, centerGhostDistance))
@@ -337,19 +380,19 @@ def betterEvaluationFunction(currentGameState):
       else:
           ghostW, ghostScore = 5.0, (-1.0/max(1, minGhostDistance))
   else:
-      minPrey = min(manhattanDistance(ghost.getPosition(), statePosition) for ghost in whiteGhost)
+      minPrey = min(BFS_Distance(ghost.getPosition(), statePosition) for ghost in whiteGhost)
       minPreyGhost = 0
       for ghost in whiteGhost:
-          minPreyGhost = ghost if manhattanDistance(ghost.getPosition(), statePosition) == minPrey else minPreyGhost
+          minPreyGhost = ghost if BFS_Distance(ghost.getPosition(), statePosition) == minPrey else minPreyGhost
       if len(normalGhost) > 0:
-          minGhostDistance = min(manhattanDistance(ghost.getPosition(), statePosition) for ghost in normalGhost)
+          minGhostDistance = min(BFS_Distance(ghost.getPosition(), statePosition) for ghost in normalGhost)
           centerGhost = sum(ghost.getPosition()[0] for ghost in normalGhost) / len(normalGhost), sum(ghost.getPosition()[1] for ghost in normalGhost) / len(normalGhost)
           centerGhostDistance = manhattanDistance(centerGhost, statePosition)
           if centerGhostDistance <= minGhostDistance and minGhostDistance >= Factor_minGhost and minGhostDistance <= Factor_hunt_active_distance:
               ghostW, ghostScore = 10.0, (-1.0/max(centerGhostDistance, 1))
           elif centerGhostDistance >= minGhostDistance and minGhostDistance >= 1:
               ghostW, ghostScore = 5.0 , (-1.0/ max(1, centerGhostDistance))
-          elif min(manhattanDistance(ghost.getPosition(), minPreyGhost.getPosition())) <= Factor_white_normal:
+          elif min(manhattanDistance(ghost.getPosition(), minPreyGhost.getPosition()) for ghost in normalGhost) <= Factor_white_normal:
               hunterOppre = 1
           elif minGhostDistance == Factor_dead:
               return float('-inf')
